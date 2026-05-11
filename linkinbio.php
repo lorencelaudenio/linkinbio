@@ -9,10 +9,60 @@ SHORTCODES:
 ==================================================
 */
 
-/* ------------------------------------------------
-CREATE DATABASE TABLES
------------------------------------------------- */
+/*add ajax handler*/
+add_action('wp_ajax_lv_add_link', function () {
 
+    if (!is_user_logged_in()) {
+        wp_send_json_error('Not logged in');
+    }
+
+    global $wpdb;
+
+    $table = $wpdb->prefix . 'lv_links';
+    $user_id = get_current_user_id();
+
+    $inserted = $wpdb->insert($table, [
+        'user_id' => $user_id,
+        'title' => sanitize_text_field($_POST['title']),
+        'url' => esc_url_raw($_POST['url'])
+    ]);
+
+    if ($inserted) {
+        wp_send_json_success([
+            'id' => $wpdb->insert_id,
+            'title' => $_POST['title'],
+            'url' => $_POST['url']
+        ]);
+    } else {
+        wp_send_json_error();
+    }
+});
+
+/*ajax edit delete*/
+add_action('wp_ajax_lv_delete_link', function () {
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error('Not logged in');
+    }
+
+    global $wpdb;
+
+    $table = $wpdb->prefix . 'lv_links';
+    $user_id = get_current_user_id();
+
+    $link_id = intval($_POST['link_id']);
+
+    $deleted = $wpdb->delete($table, [
+        'id' => $link_id,
+        'user_id' => $user_id
+    ]);
+
+    if ($deleted) {
+        wp_send_json_success();
+    } else {
+        wp_send_json_error();
+    }
+});
 add_action('login_init', function () {
 
     wp_redirect(home_url('/login'));
@@ -265,27 +315,7 @@ add_shortcode('lv_dashboard', function () {
 
     }
 	
-	/* EDIT LINK */
-if (isset($_POST['lv_update_link'])) {
 
-    $link_id = intval($_POST['link_id']);
-
-    $wpdb->update(
-        $table_links,
-        array(
-            'title' => sanitize_text_field($_POST['title']),
-            'url'   => esc_url_raw($_POST['url'])
-        ),
-        array(
-            'id' => $link_id,
-            'user_id' => $user_id
-        )
-    );
-
-    // ✅ IMPORTANT: redirect to remove ?edit parameter
-    wp_redirect(home_url('/dashboard'));
-    exit;
-}
 
     /* DELETE LINK */
 
@@ -364,8 +394,7 @@ $profile_pic = get_user_meta($user_id, 'lv_profile_pic', true);
     <div class="lv-card">
 
         <h3><?php echo $edit_link ? 'Edit Link' : 'Add New Link'; ?></h3>
-
-        <form method="POST" class="lv-form-clean">
+<form class="lv-add-form">
 
             <input type="hidden" name="link_id" value="<?php echo $edit_link->id ?? ''; ?>">
 
@@ -404,20 +433,30 @@ $profile_pic = get_user_meta($user_id, 'lv_profile_pic', true);
                 );
                 ?>
 
-                <div class="lv-link-card">
+                <div class="lv-link-card" data-id="<?php echo $link->id; ?>">
 
-                    <div>
-                        <div class="lv-title"><?php echo esc_html($link->title); ?></div>
-                        <div class="lv-url"><?php echo esc_html($link->url); ?></div>
-                        <div class="lv-meta">Clicks: <?php echo $clicks; ?></div>
-                    </div>
+    <!-- VIEW MODE -->
+    <div class="lv-view">
+        <div class="lv-title"><?php echo esc_html($link->title); ?></div>
+        <div class="lv-url"><?php echo esc_html($link->url); ?></div>
+        <div class="lv-meta">Clicks: <?php echo $clicks; ?></div>
 
-                    <div class="lv-actions">
-                        <a href="?edit=<?php echo $link->id; ?>">Edit</a>
-                        <a href="?delete=<?php echo $link->id; ?>" onclick="return confirm('Delete this link?')">Delete</a>
-                    </div>
+        <div class="lv-actions">
+            <button type="button" class="lv-edit-btn">Edit</button>
+            <button type="button" class="lv-delete-btn">Delete</button>
+        </div>
+    </div>
 
-                </div>
+    <!-- EDIT MODE (HIDDEN) -->
+    <div class="lv-edit" style="display:none;">
+        <input type="text" class="lv-edit-title" value="<?php echo esc_attr($link->title); ?>">
+        <input type="url" class="lv-edit-url" value="<?php echo esc_url($link->url); ?>">
+
+        <button type="button" class="lv-save-btn">Save</button>
+        <button type="button" class="lv-cancel-btn">Cancel</button>
+    </div>
+
+</div>
 
             <?php endforeach; ?>
 
@@ -427,35 +466,61 @@ $profile_pic = get_user_meta($user_id, 'lv_profile_pic', true);
 
 </div>
 
-    
-
-<script>
+ <script>
 document.addEventListener('click', function(e) {
 
     /* OPEN EDIT */
-    if (e.target.classList.contains('lv-edit')) {
-        const item = e.target.closest('.lv-item');
+    if (e.target.classList.contains('lv-edit-btn')) {
+        const card = e.target.closest('.lv-link-card');
 
-        item.querySelector('.lv-view').style.display = 'none';
-        item.querySelector('.lv-edit-form').style.display = 'block';
+        card.querySelector('.lv-view').style.display = 'none';
+        card.querySelector('.lv-edit').style.display = 'block';
     }
+	
+	
 
-    /* CANCEL EDIT */
-    if (e.target.classList.contains('lv-cancel')) {
-        const item = e.target.closest('.lv-item');
+    /* CANCEL */
+    if (e.target.classList.contains('lv-cancel-btn')) {
+        const card = e.target.closest('.lv-link-card');
 
-        item.querySelector('.lv-view').style.display = 'block';
-        item.querySelector('.lv-edit-form').style.display = 'none';
+        card.querySelector('.lv-view').style.display = 'block';
+        card.querySelector('.lv-edit').style.display = 'none';
     }
+	
+	/* DELETE LINK */
+if (e.target.classList.contains('lv-delete-btn')) {
 
-    /* SAVE EDIT (AJAX) */
-    if (e.target.classList.contains('lv-save')) {
+    const card = e.target.closest('.lv-link-card');
+    const id = card.dataset.id;
 
-        const item = e.target.closest('.lv-item');
+    if (!confirm('Delete this link?')) return;
 
-        const id = item.dataset.id;
-        const title = item.querySelector('.edit-title').value;
-        const url = item.querySelector('.edit-url').value;
+    const formData = new FormData();
+    formData.append('action', 'lv_delete_link');
+    formData.append('link_id', id);
+
+    fetch("<?php echo admin_url('admin-ajax.php'); ?>", {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (res.success) {
+            card.remove(); // instant UI delete
+        } else {
+            alert('Delete failed');
+        }
+    });
+}
+
+    /* SAVE (AJAX UPDATE) */
+    if (e.target.classList.contains('lv-save-btn')) {
+
+        const card = e.target.closest('.lv-link-card');
+        const id = card.dataset.id;
+
+        const title = card.querySelector('.lv-edit-title').value;
+        const url = card.querySelector('.lv-edit-url').value;
 
         const formData = new FormData();
         formData.append('action', 'lv_update_link');
@@ -472,11 +537,11 @@ document.addEventListener('click', function(e) {
 
             if (res.success) {
 
-                item.querySelector('.lv-title').innerText = res.data.title;
-                item.querySelector('.lv-url').innerText = res.data.url;
+                card.querySelector('.lv-title').innerText = title;
+                card.querySelector('.lv-url').innerText = url;
 
-                item.querySelector('.lv-view').style.display = 'block';
-                item.querySelector('.lv-edit-form').style.display = 'none';
+                card.querySelector('.lv-view').style.display = 'block';
+                card.querySelector('.lv-edit').style.display = 'none';
 
             } else {
                 alert('Update failed');
@@ -487,7 +552,46 @@ document.addEventListener('click', function(e) {
     }
 
 });
+	 
+	 /*add ajax*/
+	/* ADD LINK AJAX */
+let isSubmitting = false;
+
+document.addEventListener('submit', function(e) {
+
+    if (!e.target.classList.contains('lv-add-form')) return;
+
+    e.preventDefault();
+
+    if (isSubmitting) return;
+    isSubmitting = true;
+
+    const form = e.target;
+
+    const formData = new FormData();
+    formData.append('action', 'lv_add_link');
+    formData.append('title', form.title.value);
+    formData.append('url', form.url.value);
+
+    fetch("<?php echo admin_url('admin-ajax.php'); ?>", {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(res => {
+        isSubmitting = false;
+
+        if (res.success) {
+            location.reload();
+        } else {
+            alert("Add failed");
+        }
+    });
+
+});
 </script>
+
+
 
 <?php
 
@@ -838,11 +942,7 @@ add_action('wp_head', function () {
     color:#6b7280;
 }
 
-.lv-dashboard-wrap{
-    max-width:800px;
-    margin:40px auto;
-    padding:0 16px;
-}
+
 </style>
 
 <?php
@@ -856,30 +956,25 @@ add_action('wp_ajax_lv_update_link', function () {
 
     global $wpdb;
 
-    $table_links = $wpdb->prefix . 'lv_links';
+    $table = $wpdb->prefix . 'lv_links';
     $user_id = get_current_user_id();
 
-    $link_id = intval($_POST['link_id']);
-
     $updated = $wpdb->update(
-        $table_links,
-        array(
+        $table,
+        [
             'title' => sanitize_text_field($_POST['title']),
             'url'   => esc_url_raw($_POST['url'])
-        ),
-        array(
-            'id' => $link_id,
+        ],
+        [
+            'id' => intval($_POST['link_id']),
             'user_id' => $user_id
-        )
+        ]
     );
 
     if ($updated !== false) {
-        wp_send_json_success(array(
-            'title' => $_POST['title'],
-            'url'   => $_POST['url']
-        ));
+        wp_send_json_success();
     } else {
-        wp_send_json_error('Update failed');
+        wp_send_json_error();
     }
 });
 
