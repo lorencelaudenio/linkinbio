@@ -28,7 +28,64 @@ add_action('template_redirect', function () {
     }
 
 });
+add_action('user_register', function($user_id){
 
+    $user = get_userdata($user_id);
+
+    $profile_url = home_url('/u/' . $user->user_login);
+    $dashboard_url = home_url('/dashboard');
+
+    $subject = 'Welcome to MyBio 🚀 Your Page is Ready!';
+
+    $message = '
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111">
+
+        <h2 style="color:#111827;">Welcome to MyBio 🚀</h2>
+
+        <p>Hi <b>'.$user->user_login.'</b>,</p>
+
+        <p>Your account has been successfully created and your bio page is now live.</p>
+
+        <hr>
+
+        <h3>🔗 Your Links</h3>
+
+        <p>
+            👉 Public Page:<br>
+            <a href="'.$profile_url.'">'.$profile_url.'</a>
+        </p>
+
+        <p>
+            👉 Manage Your Links:<br>
+            <a href="'.$dashboard_url.'">'.$dashboard_url.'</a>
+        </p>
+
+        <hr>
+
+        <h3>✨ What you can do now:</h3>
+        <ul>
+            <li>Add unlimited links</li>
+            <li>Customize your profile</li>
+            <li>Share your page anywhere</li>
+            <li>Track link clicks</li>
+        </ul>
+
+        <p style="margin-top:20px;">
+            Start building your online presence in one simple page.
+        </p>
+
+        <p><b>- MyBio Team</b></p>
+
+    </div>
+    ';
+
+    $headers = array(
+        'Content-Type: text/html; charset=UTF-8'
+    );
+
+    wp_mail($user->user_email, $subject, $message, $headers);
+
+});
 add_action('init', function () {
 
     global $wpdb;
@@ -323,7 +380,7 @@ ob_start();
 $current_user = wp_get_current_user();
 $profile_pic = get_user_meta($user_id, 'lv_profile_pic', true);
 ?>
-<div class="lv-section">
+
 <h2>Profile Settings</h2>
 
 <form method="POST" class="lv-form">
@@ -336,8 +393,6 @@ $profile_pic = get_user_meta($user_id, 'lv_profile_pic', true);
     </button>
 
 </form>
-
-
 
 
     <div class="lv-dashboard">
@@ -372,10 +427,9 @@ $profile_pic = get_user_meta($user_id, 'lv_profile_pic', true);
     <?php endif; ?>
 
 </form>
-		</div>
 
         <hr>
-<div class="lv-section">
+
         <h3>Your Links</h3>
 
         <?php foreach($links as $link): ?>
@@ -418,7 +472,6 @@ $profile_pic = get_user_meta($user_id, 'lv_profile_pic', true);
             <hr>
 
         <?php endforeach; ?>
-	</div>
 
     </div>
 
@@ -701,114 +754,39 @@ add_action('wp_head', function () {
 
 <style>
 
-
-	
-	body{
-    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
-    background:#f5f7fb;
-    margin:0;
-}
-
-/* Center auth pages */
 .lv-form{
-    max-width:420px;
-    margin:60px auto;
-    background:#fff;
-    padding:30px;
-    border-radius:18px;
-    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+    max-width:400px;
+    margin:auto;
 }
 
-/* Inputs */
 .lv-form input{
     width:100%;
-    padding:14px 16px;
-    margin-bottom:12px;
-    border:1px solid #e5e7eb;
-    border-radius:12px;
-    font-size:14px;
-    transition:0.2s;
+    padding:14px;
+    margin-bottom:10px;
+    border:1px solid #ddd;
+    border-radius:10px;
 }
 
-.lv-form input:focus{
-    border-color:#437a65;
-    box-shadow:0 0 0 3px rgba(67,122,101,0.15);
-    outline:none;
-}
-
-/* Button */
 .lv-form button{
     width:100%;
     padding:14px;
     border:none;
-    border-radius:12px;
-    background:#437a65;
-    color:#fff;
-    font-weight:600;
+    background:#111827;
+    color:white;
+    border-radius:10px;
     cursor:pointer;
-    transition:0.2s;
 }
 
-.lv-form button:hover{
-    background:#356353;
-    transform:translateY(-1px);
-}
-
-/* Dashboard wrapper */
 .lv-dashboard{
-    max-width:800px;
-    margin:40px auto;
-    padding:0 20px;
+    max-width:700px;
+    margin:auto;
 }
 
-/* Section card */
-.lv-section{
-    background:#fff;
-    padding:20px;
-    border-radius:16px;
-    box-shadow:0 10px 25px rgba(0,0,0,0.05);
-    margin-bottom:20px;
-}
-
-/* Link cards */
 .lv-item{
-    background:#fff;
-    border:1px solid #eee;
-    padding:16px;
-    border-radius:14px;
-    margin-bottom:12px;
-    transition:0.2s;
+    background:#f9f9f9;
+    padding:20px;
+    border-radius:12px;
 }
-
-.lv-item:hover{
-    transform:translateY(-2px);
-    box-shadow:0 8px 20px rgba(0,0,0,0.06);
-}
-
-/* Link title */
-.lv-title{
-    font-weight:600;
-    color:#111827;
-}
-
-/* URL */
-.lv-url{
-    font-size:12px;
-    color:#6b7280;
-}
-
-/* Buttons */
-.lv-edit, .lv-save, .lv-cancel{
-    padding:6px 10px;
-    border-radius:8px;
-    border:none;
-    font-size:12px;
-    cursor:pointer;
-}
-
-.lv-edit{ background:#e5f0eb; color:#437a65; }
-.lv-save{ background:#437a65; color:#fff; }
-.lv-cancel{ background:#f3f4f6; }
 
 </style>
 
